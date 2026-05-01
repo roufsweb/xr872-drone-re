@@ -8,40 +8,41 @@ The goal is to use the camera module as a standalone device without the propriet
 2. Uncover the exact hexadecimal "wake up" payload required to trigger the stream.
 3. Locate hidden stream URLs (RTSP/MJPEG).
 
-## Hardware Overview
-- **SoC**: Xradio XR872ET (ARM Cortex-M4F, Little Endian)
-- **Flash**: T25S40 SPI NOR (512KB)
-- **OS**: FreeRTOS-based
-- **Network Stack**: lwIP
-- **Camera Sensors**: gc0328, gc2015, sp0A19 (referenced in drivers)
-- **Hardware Encoder**: CSI_JPEG
+## Hardware Deep Dive: XR872ET SoC
+The **Xradio XR872ET** is a high-performance, low-power wireless System-on-Chip (SoC) designed for IoT applications with multimedia requirements.
 
-## Current Findings
+### **Core Specifications**
+- **CPU**: ARM Cortex-M4F (with FPU and DSP instructions).
+- **Clock Speed**: Up to **384 MHz**.
+- **Memory**: 
+  - **Internal SRAM**: 416 KB.
+  - **Internal ROM**: 160 KB.
+  - **External Support**: Supports QSPI Flash and OPI PSRAM.
+- **Multimedia**:
+  - **Hardware JPEG Encoder**: Essential for high-frame-rate video streaming.
+  - **CSI Interface**: Used to interface with the GC0328 and other sensors.
+- **Security**: Hardware crypto engine (AES/DES/SHA/CRC).
 
-### Networking
-- **SSID**: `WiFiUFO_`
-- **Gateway**: `192.168.28.1`
-- **IP Range**: `192.168.28.2` - `192.168.28.10`
-- **Open Ports**: None found during standard scan (1-9999). Likely requires a magic packet to "wake up" the server.
+## Firmware Architecture
+The `factory-firmwire.bin` file is a composite flash image using the Xradio **AWIH** (Allwinner/Xradio Image Header) format. It consists of multiple partitions:
 
-### Strings & Commands
-The binary contains specific strings used for camera control, including a notable typo ("sream"):
-- `sream start` (Offset: `0xE76C` in firmware)
-- `sream stop` (Offset: `0xE779`)
-- `stream sw` (Offset: `0xE785`)
+### **Image Partitions (Flash Layout)**
+| Flash Offset | Type | Section ID | Description |
+|--------------|------|------------|-------------|
+| `0x00000`    | `boot` | `0xa5ff5a00` | Primary Bootloader |
+| `0x08000`    | `app`  | `0xa5fe5a01` | Application Metadata & RAM sections |
+| `0x11C00`    | `app`  | `0xa5fd5a02` | Main Application Code / RAM Sections |
+| `0x61800`    | `xip`  | `0xa5fd5a02` | Execute-In-Place (XIP) code partition |
 
-## Technical Analysis
+### **Partition Analysis**
+- **Bootloader (`0x00000`)**: Handles initial SoC setup and loads the application image.
+- **Application (`0x11C00`)**: Contains the core logic, including the lwIP network stack and the "WiFiUFO" control logic.
+- **XIP Section (`0x61800`)**: Code that runs directly from the SPI flash to save internal SRAM. This is where large functions (like video processing and protocol handling) are often stored.
 
-### Firmware Header (`AWIH`)
-The firmware uses the Allwinner/Xradio Image Header format.
-- **Load Address**: `0x00268000` (Use this as the base address in Ghidra)
-- **Entry Point**: `0x00268101`
+## Reverse Engineering Insights
+- **Target Address**: When analyzing the `app` section in Ghidra, use the load address specified in the header at `0x8000` (typically **`0x00201000`**) or the bootloader load address (**`0x00268000`**).
+- **Strings Anchor**: The typo `sream start` is located in the middle of the binary, likely within the `app` partition. This confirms that the camera control logic is part of the high-level application code, not the bootloader.
 
-### Reverse Engineering Strategy
-1. **Tooling**: Use Ghidra with the `ARM:LE:32:Cortex (v7m)` language.
-2. **Anchor**: Use the string `sream start` to locate the command dispatcher.
-3. **Tracing**: Follow the cross-references from the command handler to identify the network task calling it.
-4. **Port Discovery**: Look for the `lwip_bind` call preceding the main receive loop in the network task.
 
 ## Tools Used
 - `binwalk`: For entropy analysis and extraction.
