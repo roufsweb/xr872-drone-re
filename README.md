@@ -40,8 +40,10 @@ The `factory-firmwire.bin` file is a composite flash image using the Xradio **AW
 - **XIP Section (`0x61800`)**: Code that runs directly from the SPI flash to save internal SRAM. This is where large functions (like video processing and protocol handling) are often stored.
 
 ## Reverse Engineering Insights
-- **Target Address**: When analyzing the `app` section in Ghidra, use the load address specified in the header at `0x8000` (typically **`0x00201000`**) or the bootloader load address (**`0x00268000`**).
 - **Strings Anchor**: The typo `sream start` is located in the middle of the binary, likely within the `app` partition. This confirms that the camera control logic is part of the high-level application code, not the bootloader.
+- **Port Table Discovery**: A static port table was found at offset **`0x113D8`**, explicitly defining ports **8080**, **8081**, and **8082**.
+- **Protocols**: Reference to port **554** suggests **RTSP** support.
+- **Hidden Strings**: The string `WiFi_8K_254116` was identified; it may serve as a default WPA key or an internal identifier.
 
 
 ## Tools Used
