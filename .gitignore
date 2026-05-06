@@ -1,0 +1,24 @@
+# Build artifacts
+*.o
+*.d
+*.a
+*.axf
+*.map
+*.hex
+*.img
+
+# Xradio specific
+sdk/.config
+sdk/bin/xradio_v2/boot/xr872/*.bin
+sdk/bin/xradio_v2/*.bin
+sdk/lib/*.a
+
+# Keep the final full binary if requested, but usually better to ignore large bins
+# full_flash_512k.bin
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Large tools
+tools/
